@@ -1,6 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 1, "column": 0}, "map": {"version":3,"sources":["file:///Users/aqib/Downloads/whatsapp-demo-fixed/app/globals.css"],"sourcesContent":["* {\n  box-sizing: border-box;\n}\n\nhtml, body {\n  margin: 0;\n  padding: 0;\n  font-family: Arial, Helvetica, sans-serif;\n  background: #f8fafc;\n  color: #0f172a;\n}\n\na {\n  color: inherit;\n  text-decoration: none;\n}\n\ninput, textarea, select, button {\n  font: inherit;\n}\n\nbutton {\n  cursor: pointer;\n}\n"],"names":[],"mappings":"AAAA;;;;AAIA;;;;;;;;AAQA;;;;;AAKA;;;;AAIA"}}]
-}
