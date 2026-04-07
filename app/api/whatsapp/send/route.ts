@@ -11,14 +11,11 @@ export async function POST(req: Request) {
       );
     }
 
-    const token = process.env.WHATSAPP_ACCESS_TOKEN;
-    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-
-    if (!phoneNumberId || !token) {
+    if (!process.env.WHATSAPP_PHONE_NUMBER_ID || !process.env.WHATSAPP_ACCESS_TOKEN) {
       return NextResponse.json(
         {
           success: false,
-          error: "Missing WHATSAPP_PHONE_NUMBER_ID or WHATSAPP_ACCESS_TOKEN in .env.local",
+          error: "Missing WHATSAPP_PHONE_NUMBER_ID or WHATSAPP_ACCESS_TOKEN in environment variables.",
         },
         { status: 500 }
       );
@@ -27,12 +24,12 @@ export async function POST(req: Request) {
     const cleanPhone = String(to).replace(/\+/g, "").replace(/\s/g, "");
 
     const response = await fetch(
-      `https://graph.facebook.com/v22.0/${phoneNumberId}/messages`,
+      `https://graph.facebook.com/v23.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
         },
         body: JSON.stringify({
           messaging_product: "whatsapp",
@@ -40,9 +37,7 @@ export async function POST(req: Request) {
           type: "template",
           template: {
             name: "hello_world",
-            language: {
-              code: "en_US",
-            },
+            language: { code: "en_US" },
           },
         }),
       }
@@ -57,7 +52,6 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       message: "Template message sent successfully.",
-      sentTo: `+${cleanPhone}`,
       data,
     });
   } catch (error) {

@@ -1,22 +1,63 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+type DemoConnectionState = {
+  status: "not_connected" | "connecting" | "connected";
+  businessName: string;
+  phoneNumber: string;
+  wabaId: string;
+  phoneNumberId?: string;
+  connectedAt?: string;
+};
 
 type LogItem = {
   success?: boolean;
+  title?: string;
   message?: string;
-  sentTo?: string;
-  data?: {
-    messages?: Array<{ id?: string }>;
-  };
+  phone?: string;
+  messageId?: string;
   error?: unknown;
 };
 
+const STORAGE_KEY = "waDemoConnectionState";
+
+const defaultConnectionState: DemoConnectionState = {
+  status: "not_connected",
+  businessName: "Meta onboarding demo not completed yet",
+  phoneNumber: "Click Connect with Meta to simulate business onboarding",
+  wabaId: "Pending demo connection",
+};
+
+const fakeBusiness = {
+  businessName: "Connected via Meta Demo",
+  phoneNumber: "+1 555 174 8540",
+  wabaId: "1954907808733105",
+  phoneNumberId: "1016211464917076",
+};
+
 export default function Dashboard() {
-  const [phone, setPhone] = useState("+923058427519");
-  const [message] = useState("This demo sends the approved hello_world WhatsApp template.");
+  const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
+  const [metaLoading, setMetaLoading] = useState(false);
+  const [showDemoModal, setShowDemoModal] = useState(false);
   const [log, setLog] = useState<LogItem[]>([]);
+  const [connectionState, setConnectionState] = useState<DemoConnectionState>(defaultConnectionState);
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        setConnectionState(JSON.parse(saved) as DemoConnectionState);
+      } catch {
+        window.localStorage.removeItem(STORAGE_KEY);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(connectionState));
+  }, [connectionState]);
 
   const sendMessage = async () => {
     setLoading(true);
@@ -27,13 +68,105 @@ export default function Dashboard() {
         body: JSON.stringify({ to: phone }),
       });
       const data = await res.json();
-      setLog((prev) => [data, ...prev]);
+
+      if (data?.success) {
+        setLog((prev) => [
+          {
+            success: true,
+            title: "Message sent successfully",
+            message: data?.message || "Approved template message sent successfully.",
+            phone,
+            messageId: data?.data?.messages?.[0]?.id,
+          },
+          ...prev,
+        ]);
+      } else {
+        setLog((prev) => [
+          {
+            success: false,
+            title: "Message failed",
+            error: data?.error || data,
+          },
+          ...prev,
+        ]);
+      }
     } catch (error) {
-      setLog((prev) => [{ success: false, error: String(error) }, ...prev]);
+      setLog((prev) => [
+        {
+          success: false,
+          title: "Message failed",
+          error: String(error),
+        },
+        ...prev,
+      ]);
     } finally {
       setLoading(false);
     }
   };
+
+  const startMetaConnect = () => {
+    setMetaLoading(true);
+    setShowDemoModal(true);
+  };
+
+  const completeDemoConnection = () => {
+    const nextState: DemoConnectionState = {
+      status: "connected",
+      businessName: fakeBusiness.businessName,
+      phoneNumber: fakeBusiness.phoneNumber,
+      wabaId: fakeBusiness.wabaId,
+      phoneNumberId: fakeBusiness.phoneNumberId,
+      connectedAt: new Date().toLocaleString(),
+    };
+
+    setConnectionState(nextState);
+    setMetaLoading(false);
+    setShowDemoModal(false);
+    setLog((prev) => [
+      {
+        success: true,
+        title: "Meta connection completed",
+        message: "Connect with Meta flow completed successfully.",
+      },
+      ...prev,
+    ]);
+  };
+
+  const cancelDemoConnection = () => {
+    setMetaLoading(false);
+    setShowDemoModal(false);
+    setLog((prev) => [
+      {
+        success: false,
+        title: "Meta connection cancelled",
+        message: "The demo Meta onboarding popup was closed before completion.",
+      },
+      ...prev,
+    ]);
+  };
+
+  const resetDemoConnection = () => {
+    setConnectionState(defaultConnectionState);
+    window.localStorage.removeItem(STORAGE_KEY);
+    setLog((prev) => [
+      {
+        success: true,
+        title: "Connection reset",
+        message: "Demo Meta connection was cleared so onboarding can be shown again.",
+      },
+      ...prev,
+    ]);
+  };
+
+  const connectionBadge = useMemo(() => {
+    if (connectionState.status === "connected") {
+      return { label: "Connected", background: "#ecfdf5", color: "#047857" };
+    }
+    if (connectionState.status === "connecting") {
+      return { label: "Connecting", background: "#eff6ff", color: "#1d4ed8" };
+    }
+    return { label: "Demo flow", background: "#f8fafc", color: "#475569" };
+  }, [connectionState.status]);
 
   return (
     <main style={{ minHeight: "100vh", padding: 24 }}>
@@ -49,24 +182,31 @@ export default function Dashboard() {
                 Demo UI for Meta app connection, sending approved WhatsApp template messages, and viewing activity.
               </p>
             </div>
-            <button
-              style={{
-                background: "#0f172a",
-                color: "#fff",
-                padding: "14px 22px",
-                borderRadius: 16,
-                border: "none",
-                fontWeight: 700,
-              }}
-            >
-              Connect with Meta
-            </button>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+              <button
+                onClick={startMetaConnect}
+                disabled={metaLoading}
+                style={{
+                  background: "#0f172a",
+                  color: "#fff",
+                  padding: "14px 22px",
+                  borderRadius: 16,
+                  border: "none",
+                  fontWeight: 700,
+                  opacity: metaLoading ? 0.7 : 1,
+                }}
+              >
+                {metaLoading ? "Opening Meta…" : "Connect with Meta"}
+              </button>
+                
+            </div>
           </div>
+          
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16, marginBottom: 24 }}>
           {[
-            ["Connected Accounts", "1", "1 Meta-connected business"],
+            ["Connected Accounts", "1", connectionState.status === "connected" ? "1 business connected in demo" : "Demo onboarding ready to show"],
             ["Messages Sent Today", "Live", "Approved template demo"],
             ["Webhook Status", "Ready", "Can be extended next"],
           ].map(([title, value, note]) => (
@@ -82,15 +222,36 @@ export default function Dashboard() {
           <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 24, padding: 24 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
               <h2 style={{ margin: 0 }}>Connected Business Number</h2>
-              <span style={{ background: "#ecfdf5", color: "#047857", padding: "8px 12px", borderRadius: 999, fontSize: 12, fontWeight: 700 }}>
-                Connected
+              <span
+                style={{
+                  background: connectionBadge.background,
+                  color: connectionBadge.color,
+                  padding: "8px 12px",
+                  borderRadius: 999,
+                  fontSize: 12,
+                  fontWeight: 700,
+                }}
+              >
+                {connectionBadge.label}
               </span>
             </div>
 
             <div style={{ marginTop: 18, border: "1px solid #e2e8f0", borderRadius: 20, padding: 18 }}>
-              <div style={{ fontWeight: 700, fontSize: 18 }}>WhatsApp Business Connected</div>
-              <div style={{ color: "#475569", marginTop: 6 }}>+1 555 174 8540</div>
-              <div style={{ color: "#64748b", marginTop: 10, fontSize: 13 }}>WABA ID: 1954907808733105</div>
+              <div style={{ fontWeight: 700, fontSize: 18 }}>{connectionState.businessName}</div>
+              <div style={{ color: "#475569", marginTop: 6 }}>{connectionState.phoneNumber}</div>
+              <div style={{ color: "#64748b", marginTop: 10, fontSize: 13 }}>
+                {connectionState.wabaId.startsWith("Pending") ? connectionState.wabaId : `WABA ID: ${connectionState.wabaId}`}
+              </div>
+              {connectionState.phoneNumberId && (
+                <div style={{ color: "#64748b", marginTop: 6, fontSize: 13 }}>
+                  Phone Number ID: {connectionState.phoneNumberId}
+                </div>
+              )}
+              {connectionState.connectedAt && (
+                <div style={{ color: "#64748b", marginTop: 6, fontSize: 13 }}>
+                  Connected at: {connectionState.connectedAt}
+                </div>
+              )}
             </div>
           </div>
 
@@ -107,10 +268,10 @@ export default function Dashboard() {
 
             <label style={{ display: "block", marginBottom: 8, fontWeight: 700 }}>Message Type</label>
             <textarea
-              value={message}
+              value="This demo sends the approved hello_world WhatsApp template."
               readOnly
-              rows={4}
-              style={{ width: "100%", padding: 14, borderRadius: 14, border: "1px solid #cbd5e1", marginBottom: 16, resize: "vertical", background: "#f8fafc", color: "#475569" }}
+              rows={5}
+              style={{ width: "100%", padding: 14, borderRadius: 14, border: "1px solid #cbd5e1", marginBottom: 16, resize: "vertical", color: "#475569" }}
             />
 
             <button
@@ -133,7 +294,7 @@ export default function Dashboard() {
               <h3>Activity Log</h3>
               <div style={{ display: "grid", gap: 12 }}>
                 {log.length === 0 ? (
-                  <div style={{ color: "#64748b" }}>No events yet. Send a test message.</div>
+                  <div style={{ color: "#64748b" }}>No events yet. Connect Meta demo or send a test message.</div>
                 ) : (
                   log.map((item, index) => (
                     <div
@@ -141,26 +302,22 @@ export default function Dashboard() {
                       style={{
                         background: item.success ? "#eff6ff" : "#fef2f2",
                         border: `1px solid ${item.success ? "#bfdbfe" : "#fecaca"}`,
-                        color: "#0f172a",
+                        color: item.success ? "#1e3a8a" : "#991b1b",
                         padding: 16,
                         borderRadius: 16,
                       }}
                     >
-                      <div style={{ fontWeight: 700, marginBottom: 6 }}>
-                        {item.success ? "✅ Message sent successfully" : "❌ Message failed"}
+                      <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 6 }}>
+                        {item.success ? "✅" : "❌"} {item.title}
                       </div>
-                      {item.message ? <div style={{ marginBottom: 6 }}>{item.message}</div> : null}
-                      {item.sentTo ? <div style={{ color: "#475569", marginBottom: 6 }}>To: {item.sentTo}</div> : null}
-                      {item.data?.messages?.[0]?.id ? (
-                        <div style={{ color: "#64748b", fontSize: 13, wordBreak: "break-all" }}>
-                          Message ID: {item.data.messages[0].id}
-                        </div>
-                      ) : null}
-                      {!item.success && item.error ? (
-                        <pre style={{ whiteSpace: "pre-wrap", margin: "8px 0 0", fontSize: 13 }}>
+                      {item.message && <div style={{ marginBottom: 4 }}>{item.message}</div>}
+                      {item.phone && <div style={{ marginBottom: 4 }}>To: {item.phone}</div>}
+                      {item.messageId && <div style={{ fontSize: 13, opacity: 0.8 }}>Message ID: {item.messageId}</div>}
+                      {item.error && (
+                        <pre style={{ whiteSpace: "pre-wrap", margin: 0, fontSize: 13, overflowX: "auto" }}>
                           {JSON.stringify(item.error, null, 2)}
                         </pre>
-                      ) : null}
+                      )}
                     </div>
                   ))
                 )}
@@ -169,6 +326,91 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {showDemoModal && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15, 23, 42, 0.45)",
+            display: "grid",
+            placeItems: "center",
+            padding: 24,
+            zIndex: 50,
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 520,
+              background: "#fff",
+              borderRadius: 28,
+              border: "1px solid #e2e8f0",
+              boxShadow: "0 30px 80px rgba(15,23,42,0.22)",
+              overflow: "hidden",
+            }}
+          >
+            <div style={{ padding: 24, borderBottom: "1px solid #e2e8f0", background: "#f8fafc" }}>
+              <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color: "#64748b" }}>
+                Meta Onboarding Demo
+              </div>
+              <div style={{ fontSize: 28, fontWeight: 800, marginTop: 8, color: "#0f172a" }}>
+                Connect with Meta
+              </div>
+              <div style={{ color: "#475569", marginTop: 8, lineHeight: 1.5 }}>
+                This simulates the SaaS onboarding flow where a business signs in with Meta and connects a WhatsApp Business account.
+              </div>
+            </div>
+
+            <div style={{ padding: 24 }}>
+              <div style={{ display: "grid", gap: 12, marginBottom: 20 }}>
+                {[
+                  "Meta login approved",
+                  "WhatsApp business account selected",
+                  "Business phone number linked",
+                  "Connection saved in dashboard",
+                ].map((step, index) => (
+                  <div key={step} style={{ display: "flex", gap: 12, alignItems: "center", color: "#0f172a" }}>
+                    <div
+                      style={{
+                        width: 28,
+                        height: 28,
+                        borderRadius: 999,
+                        background: "#0f172a",
+                        color: "#fff",
+                        display: "grid",
+                        placeItems: "center",
+                        fontSize: 13,
+                        fontWeight: 800,
+                      }}
+                    >
+                      {index + 1}
+                    </div>
+                    <div>{step}</div>
+                  </div>
+                ))}
+              </div>
+
+              
+            </div>
+
+            <div style={{ padding: 24, display: "flex", justifyContent: "flex-end", gap: 12, borderTop: "1px solid #e2e8f0" }}>
+              <button
+                onClick={cancelDemoConnection}
+                style={{ background: "#fff", border: "1px solid #cbd5e1", color: "#0f172a", padding: "12px 18px", borderRadius: 14, fontWeight: 700 }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={completeDemoConnection}
+                style={{ background: "#0f172a", border: "none", color: "#fff", padding: "12px 18px", borderRadius: 14, fontWeight: 700 }}
+              >
+                Complete Connection
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

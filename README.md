@@ -1,11 +1,14 @@
 # WhatsApp Demo
 
 ## What changed
-- The dashboard now sends the approved `hello_world` WhatsApp template.
-- This is the most reliable demo flow because it matches the Meta API Setup test message behavior.
-- The activity log now shows a cleaner success/failure summary.
+
+- The dashboard sends the approved `hello_world` WhatsApp template.
+- The Connect with Meta button now runs a fully interactive **demo onboarding flow** with no Meta dependency.
+- Completing the demo flow updates the connected business card and activity log.
+- The app still keeps the live WhatsApp send functionality for client demos.
 
 ## Setup
+
 1. Copy `.env.example` to `.env.local`
 2. Add your WhatsApp Cloud API credentials
 3. Run:
@@ -18,4 +21,8 @@ npm run dev
 Open `http://localhost:3000`
 
 ## Demo note
-For this demo, the textarea explains that the approved template is being sent. This avoids free-text delivery issues outside the 24-hour customer service window.
+
+This build is optimized for client presentations.
+
+- **Connect with Meta** simulates the onboarding flow so you can show a complete SaaS experience immediately.
+- **Send WhatsApp Message** still uses the approved `hello_world` template and sends a real WhatsApp message through the Cloud API.

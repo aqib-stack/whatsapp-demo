@@ -8,7 +8,9 @@ export default function Home() {
         <h1 style={{ fontSize: 42, lineHeight: 1.1, marginTop: 16, marginBottom: 12 }}>
           Connect, send, and manage WhatsApp messages
         </h1>
-        
+        <p style={{ fontSize: 18, color: "#475569", maxWidth: 700, marginBottom: 28 }}>
+          Simple demo starter for showing your client a working WhatsApp dashboard flow.
+        </p>
         <a
           href="/dashboard"
           style={{
